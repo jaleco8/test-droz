@@ -13,10 +13,17 @@ export class DashboardComponent implements OnInit {
   profile: any;
   listUsers: any;
   listVentas: any;
+  listVentasFiltrada: any;
+  ListaProductos: string[] = [];
   totalVentas = 0;
   totalVentasOld = 0;
   tokenApi: string = '';
   cal: any = {};
+  month = new Date().getMonth();
+  year = new Date().getFullYear();
+  filtroFecha: string = 'month';
+
+  filter: string[] = [];
 
   constructor(
     private authGoogleService: AuthGoogleService,
@@ -64,6 +71,15 @@ export class DashboardComponent implements OnInit {
     });
     this.dashboardService.getVentas(this.tokenApi).subscribe((data) => {
       this.listVentas = data;
+      this.listVentasFiltrada = data;
+
+      this.filtrarFecha(this.filtroFecha);
+      //Lista de productos
+      this.listVentas.forEach((element: { producto: any; }) => {
+        this.ListaProductos.push(element.producto);
+      });
+      const set = new Set(this.ListaProductos);
+      this.ListaProductos = Array.from(set);
       this.calculoVentas();
     });
   }
@@ -93,7 +109,6 @@ export class DashboardComponent implements OnInit {
     this.totalVentasOld = this.totalVentasOld === 0 ? 1 : this.totalVentasOld;
     const porcentaje =
       (this.totalVentas - this.totalVentasOld) / this.totalVentasOld;
-    console.log('Porcentaje', porcentaje);
 
     this.cal = {
       porcentaje: porcentaje,
@@ -115,5 +130,48 @@ export class DashboardComponent implements OnInit {
   logout() {
     this.authGoogleService.logout();
     this.router.navigate(['/login']);
+  }
+
+  searchFilter(event: any) {
+
+    if(event.target.checked) {
+      this.filter.push(event.target.value)
+    } else {
+      //remover del array filter el valor que se desmarco
+      let index = this.filter.indexOf(event.target.value);
+      this.filter.splice(index, 1);
+    }
+
+    this.filtrarFecha(this.filtroFecha);
+    // filtrar this.listVentas
+    this.listVentasFiltrada = this.listVentasFiltrada.filter((venta: any) => {
+      return this.filter.includes(venta.producto);
+    });
+  }
+
+  clearFilter() {
+    this.filter = [];
+    this.filtroFecha = 'month';
+    this.listVentasFiltrada = this.listVentas;
+    //todos los checkbox se desmarcan
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach((checkbox) => {
+      (checkbox as HTMLInputElement).checked = false;
+    });
+  }
+
+  filtrarFecha(filtro: string) {
+    if(filtro === 'month') {
+      // Filtar por mes y año
+      this.filtroFecha = 'month';
+      this.listVentasFiltrada = this.listVentas.filter((venta: any) => {
+        return new Date(venta.fecha).getMonth() === this.month && new Date(venta.fecha).getFullYear() === this.year;
+      });
+    } else {
+      this.filtroFecha = 'year';
+      this.listVentasFiltrada = this.listVentas.filter((venta: any) => {
+        return new Date(venta.fecha).getFullYear() === this.year;
+      });
+    }
   }
 }
